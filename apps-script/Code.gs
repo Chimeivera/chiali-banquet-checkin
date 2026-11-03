@@ -66,7 +66,7 @@ function guestSignature(id,expires){return Utilities.base64EncodeWebSafe(Utiliti
 function guestToken(id){const expires=Date.now()+600000;return encodeURIComponent(id)+'.'+expires+'.'+guestSignature(id,expires)}
 function verifyGuestToken(token){const parts=String(token||'').split('.');if(parts.length!==3)throw Error('請重新查詢本人資料');const id=decodeURIComponent(parts[0]),expires=Number(parts[1]);if(!Number.isFinite(expires)||expires<Date.now()||expires>Date.now()+600000||parts[2]!==guestSignature(id,expires))throw Error('資料確認已逾時，請重新查詢');return id}
 function guestIdentity(p){return {name:p.name,department:p.department,title:p.title,expected:p.expected,checked:p.checked,token:guestToken(p.id)}}
-function guestReceipt(p){return {name:p.name,department:p.department,award:p.award||'',meal:p.meal||'葷',checked:p.checked}}
+function guestReceipt(p){return {name:p.name,department:p.department,award:p.award||'',meal:p.meal||'葷',checked:p.checked,isMainTable:/^主桌(?:$|[\s　0-9０-９一二三四五六七八九十（(])/u.test(String(p.seat||'').trim())}}
 
 function operate(q){const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID')),sheet=ss.getSheetByName('賓客資料'),roster=readRoster(sheet),b=q.body||{};const remaining=164-roster.filter(p=>p.expected).length-roster.filter(p=>!p.expected&&p.checked).length;const now=Utilities.formatDate(new Date(),'Asia/Taipei','yyyy/MM/dd HH:mm:ss');const log=(op,id,info)=>ss.getSheetByName('操作紀錄').appendRow([now,op,id,info]);
  if(q.method==='GET'&&q.path==='/api/people')return roster;
