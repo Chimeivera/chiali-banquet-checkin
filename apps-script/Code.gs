@@ -6,7 +6,16 @@ function setup(){
 }
 function doGet(){return HtmlService.createHtmlOutput('餐敘後端已部署。請從 GitHub 簽到網頁使用。')}
 function doPost(e){let q={},status=200,data;try{q=JSON.parse(e.parameter.payload||'{}');const props=PropertiesService.getScriptProperties();authorizeRequest(q,props);data=dispatch(q)}catch(err){status=err.status||400;data={error:err.message,code:err.code||''}}const reply=JSON.stringify({requestId:q.requestId,status,data}).replace(/</g,'\\u003c');const origin=JSON.stringify(PropertiesService.getScriptProperties().getProperty('ALLOWED_ORIGIN')||'https://chimeivera.github.io');return HtmlService.createHtmlOutput('<script>window.top.postMessage('+reply+','+origin+');</script>').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)}
-function dispatch(q){if(q.method==='POST'&&q.path==='/api/public/lookup')return operate(q);if(q.method==='GET'&&q.path==='/api/people'){const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'));return readRoster(ss.getSheetByName('賓客資料'))}const lock=LockService.getScriptLock();if(!lock.tryLock(25000))throw Error('目前多人操作，請稍後重試');try{return operate(q)}finally{lock.releaseLock()}}
+function dispatch(q){
+ if(q.method==='POST'&&q.path==='/api/admin/login')return adminLogin(q.body||{});
+ if(q.method==='POST'&&q.path==='/api/public/event')return publicEvent();
+ if(q.method==='POST'&&q.path==='/api/admin/event')return saveEvent(q.body||{});
+ if(q.method==='POST'&&q.path==='/api/public/lookup')return publicLookup(q.body||{});
+ if(q.method==='GET'&&q.path==='/api/people'){const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'));return readRoster(ss.getSheetByName('賓客資料'))}
+ const lock=LockService.getScriptLock(),guest=q.path==='/api/public/checkin';
+ if(!lock.tryLock(guest?200:25000)){const e=Error('目前多人報到中，系統會自動重試，請稍候');e.status=503;e.code='busy';throw e}
+ try{return operate(q)}finally{lock.releaseLock()}
+}
 function fail(message,code){const err=Error(message);err.status=409;err.code=code;throw err}
 function readRoster(sheet){const values=sheet.getDataRange().getValues(),cols=values.shift();const rowNumbers=[];const roster=values.flatMap((r,i)=>{if(!r[0])return [];rowNumbers.push(i+2);const p={};cols.forEach((k,i)=>p[k]=String(r[i]??''));['expected','staff','awardDeclined'].forEach(k=>p[k]=p[k]==='true');['checked','escorted','explained','notified'].forEach(k=>p[k]=Number(p[k]||0));return [p]});Object.defineProperties(roster,{columns:{value:cols},rowNumbers:{value:rowNumbers}});return roster}
 function writePerson(sheet,p,row,cols,keys){
@@ -21,8 +30,26 @@ function writePerson(sheet,p,row,cols,keys){
 // Only these two public operations bypass the staff access code.
 function authorizeRequest(q,props){
  if(q.origin!==props.getProperty('ALLOWED_ORIGIN'))throw Error('網站來源不正確');
- const publicAction=q.method==='POST'&&['/api/public/lookup','/api/public/checkin'].includes(q.path);
- if(!publicAction&&(!q.key||q.key!==props.getProperty('ACCESS_KEY')))throw Error('請使用工作人員專用連結');
+ const publicAction=q.method==='POST'&&['/api/public/lookup','/api/public/checkin','/api/public/event','/api/admin/login'].includes(q.path);
+ if(!publicAction&&!validAdminToken(q.key)){const e=Error('請登入管理後台');e.status=401;e.code='auth';throw e}
+}
+function adminSignature(value){const props=PropertiesService.getScriptProperties();return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(value,(props.getProperty('ACCESS_KEY')||'')+'|'+(props.getProperty('ADMIN_PASSWORD')||''))).replace(/=+$/,'')}
+function validAdminToken(token){if(!PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD'))return false;const p=String(token||'').split('.');return p.length===4&&p[0]==='admin'&&Number(p[1])>Date.now()&&Number(p[1])<=Date.now()+14400000&&p[3]===adminSignature(p.slice(0,3).join('.'))}
+function adminLogin(body){
+ const password=PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
+ if(!password)throw Error('尚未設定後台密碼，請主辦人於 Apps Script 指令碼屬性設定 ADMIN_PASSWORD');
+ if(typeof body.password!=='string'||body.password!==password)throw Error('密碼不正確，請重新輸入');
+ const expires=Date.now()+14400000,head='admin.'+expires+'.'+Utilities.getUuid();return {token:head+'.'+adminSignature(head),expires};
+}
+const EVENT_FIELDS=['newDoctors','excellentTeachers','outstandingTeachers','satisfaction'];
+function publicEvent(){let links={};try{links=JSON.parse(PropertiesService.getScriptProperties().getProperty('EVENT_LINKS')||'{}')}catch{}return {links:Object.fromEntries(EVENT_FIELDS.map(k=>[k,typeof links[k]==='string'?links[k]:'']))}}
+function saveEvent(body){const links={};for(const k of EVENT_FIELDS){const url=String(body.links?.[k]||'').trim();if(url&&(!/^https:\/\/[^\s<>"']+$/i.test(url)||url.length>1500))throw Error('請填入完整 HTTPS 連結，或留白');links[k]=url}PropertiesService.getScriptProperties().setProperty('EVENT_LINKS',JSON.stringify(links));return {ok:true,...publicEvent()}}
+function publicLookup(body){
+ const query=String(body.query||'').trim();if(query.length<2||query.length>80)throw Error('請輸入完整姓名或人事號');
+ let roster;const cache=typeof CacheService==='undefined'?null:CacheService.getScriptCache();const cached=cache?.get('guest-lookup-v2');
+ if(cached){try{roster=JSON.parse(cached)}catch{}}
+ if(!roster){const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'));roster=readRoster(ss.getSheetByName('賓客資料')).map(p=>({id:p.id,name:p.name,department:p.department,title:p.title,expected:p.expected,checked:p.checked}));const text=JSON.stringify(roster);if(text.length<85000)cache?.put('guest-lookup-v2',text,15)}
+ const found=roster.filter(p=>p.id.toUpperCase()===query.toUpperCase()||p.name===query);if(found.length>5)throw Error('請改用人事號查詢，或洽現場工作人員');return {people:found.map(guestIdentity)};
 }
 function guestSignature(id,expires){return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(id+'|'+expires,PropertiesService.getScriptProperties().getProperty('ACCESS_KEY'))).replace(/=+$/,'')}
 function guestToken(id){const expires=Date.now()+600000;return encodeURIComponent(id)+'.'+expires+'.'+guestSignature(id,expires)}
@@ -54,5 +81,6 @@ function operate(q){const ss=SpreadsheetApp.openById(PropertiesService.getScript
  if(q.method==='PATCH'&&q.path.startsWith('/api/people/')){const id=decodeURIComponent(q.path.slice('/api/people/'.length)),index=roster.findIndex(p=>p.id===id);if(index<0)throw Error('查無此人');const p=roster[index];if(b.checked===1&&p.checked)return {ok:true,alreadyChecked:true};if(b.checked===1&&!p.expected&&remaining<=0&&!b.capacityConfirmed)fail('容量已用盡','capacity');const allowed=['checked','seat','note','meal','escorted','explained','notified','contact_status'];for(const k of allowed){if(!(k in b))continue;if(['checked','escorted','explained','notified'].includes(k)&&![0,1].includes(b[k]))throw Error('無效狀態');if(['seat','note'].includes(k)&&(typeof b[k]!=='string'||b[k].length>2000))throw Error('文字過長');if(k==='meal'&&!['葷','素食','蛋奶素'].includes(b[k]))throw Error('無效餐別');if(k==='contact_status'&&!['尚未聯繫','聯繫中','未接','稍後抵達','臨時不克'].includes(b[k]))throw Error('無效聯繫狀態');if(k==='note')p.现场=b[k];else p[k]=b[k]}
  p.operator='未指定工作人員';p.updated=now;writePerson(sheet,p,roster.rowNumbers[index],roster.columns,[...allowed.filter(k=>k in b).map(k=>k==='note'?'现场':k),'operator','updated']);log('更新',id,JSON.stringify(b));SpreadsheetApp.flush();return {ok:true,alreadyChecked:false}}
  throw Error('不支援的操作')}
+
 
 
