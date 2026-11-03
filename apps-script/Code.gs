@@ -9,7 +9,6 @@ function doPost(e){let q={},status=200,data;try{q=JSON.parse(e.parameter.payload
 function dispatch(q){
  if(q.method==='POST'&&q.path==='/api/admin/login')return adminLogin(q.body||{});
  if(q.method==='POST'&&q.path==='/api/public/event')return publicEvent();
- if(q.method==='POST'&&q.path==='/api/public/registrations')return publicRegistrations();
  if(q.method==='POST'&&q.path==='/api/admin/event')return saveEvent(q.body||{});
  if(q.method==='POST'&&q.path==='/api/public/lookup')return publicLookup(q.body||{});
  if(q.method==='GET'&&q.path==='/api/people'){const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'));return readRoster(ss.getSheetByName('賓客資料'))}
@@ -31,7 +30,7 @@ function writePerson(sheet,p,row,cols,keys){
 // Only these two public operations bypass the staff access code.
 function authorizeRequest(q,props){
  if(q.origin!==props.getProperty('ALLOWED_ORIGIN'))throw Error('網站來源不正確');
- const publicAction=q.method==='POST'&&['/api/public/lookup','/api/public/checkin','/api/public/event','/api/public/registrations','/api/admin/login'].includes(q.path);
+ const publicAction=q.method==='POST'&&['/api/public/lookup','/api/public/checkin','/api/public/event','/api/admin/login'].includes(q.path);
  if(!publicAction&&!validAdminToken(q.key)){const e=Error('請登入管理後台');e.status=401;e.code='auth';throw e}
 }
 function adminSignature(value){const props=PropertiesService.getScriptProperties();return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(value,(props.getProperty('ACCESS_KEY')||'')+'|'+(props.getProperty('ADMIN_PASSWORD')||''))).replace(/=+$/,'')}
@@ -43,12 +42,6 @@ function adminLogin(body){
  const expires=Date.now()+14400000,head='admin.'+expires+'.'+Utilities.getUuid();return {token:head+'.'+adminSignature(head),expires};
 }
 const EVENT_FIELDS=['newDoctors','excellentTeachers','outstandingTeachers','satisfaction'];
-function publicRegistrations(){
- const cache=typeof CacheService==='undefined'?null:CacheService.getScriptCache();const cached=cache?.get('public-registrations-v1');if(cached){try{return JSON.parse(cached)}catch{}}
- const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'));const people=readRoster(ss.getSheetByName('賓客資料')).filter(p=>p.expected).map(p=>({name:p.name,category:p.category,department:p.department,title:p.title}));
- const result={people};const text=JSON.stringify(result);if(text.length<85000)cache?.put('public-registrations-v1',text,60);return result;
-}
-
 function publicEvent(){let links={};try{links=JSON.parse(PropertiesService.getScriptProperties().getProperty('EVENT_LINKS')||'{}')}catch{}return {links:Object.fromEntries(EVENT_FIELDS.map(k=>[k,typeof links[k]==='string'?links[k]:'']))}}
 function saveEvent(body){const links={};for(const k of EVENT_FIELDS){const url=String(body.links?.[k]||'').trim();if(url&&(!/^https:\/\/[^\s<>"']+$/i.test(url)||url.length>1500))throw Error('請填入完整 HTTPS 連結，或留白');links[k]=url}PropertiesService.getScriptProperties().setProperty('EVENT_LINKS',JSON.stringify(links));return {ok:true,...publicEvent()}}
 function publicLookup(body){
@@ -88,7 +81,6 @@ function operate(q){const ss=SpreadsheetApp.openById(PropertiesService.getScript
  if(q.method==='PATCH'&&q.path.startsWith('/api/people/')){const id=decodeURIComponent(q.path.slice('/api/people/'.length)),index=roster.findIndex(p=>p.id===id);if(index<0)throw Error('查無此人');const p=roster[index];if(b.checked===1&&p.checked)return {ok:true,alreadyChecked:true};if(b.checked===1&&!p.expected&&remaining<=0&&!b.capacityConfirmed)fail('容量已用盡','capacity');const allowed=['checked','seat','note','meal','escorted','explained','notified','contact_status'];for(const k of allowed){if(!(k in b))continue;if(['checked','escorted','explained','notified'].includes(k)&&![0,1].includes(b[k]))throw Error('無效狀態');if(['seat','note'].includes(k)&&(typeof b[k]!=='string'||b[k].length>2000))throw Error('文字過長');if(k==='meal'&&!['葷','素食','蛋奶素'].includes(b[k]))throw Error('無效餐別');if(k==='contact_status'&&!['尚未聯繫','聯繫中','未接','稍後抵達','臨時不克'].includes(b[k]))throw Error('無效聯繫狀態');if(k==='note')p.现场=b[k];else p[k]=b[k]}
  p.operator='未指定工作人員';p.updated=now;writePerson(sheet,p,roster.rowNumbers[index],roster.columns,[...allowed.filter(k=>k in b).map(k=>k==='note'?'现场':k),'operator','updated']);log('更新',id,JSON.stringify(b));SpreadsheetApp.flush();return {ok:true,alreadyChecked:false}}
  throw Error('不支援的操作')}
-
 
 
 
