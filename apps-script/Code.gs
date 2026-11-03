@@ -45,12 +45,12 @@ function adminLogin(body){
 const EVENT_FIELDS=['newDoctors','excellentTeachers','outstandingTeachers','satisfaction'];
 
 function maskRegistrationName(name){const chars=Array.from(String(name||'').replace(/[（(][^）)]*[）)]/g,'').trim());if(chars.length<=1)return '○';if(chars.length===2)return chars[0]+'○';return chars[0]+'○'.repeat(Math.min(chars.length-2,3))+chars[chars.length-1]}
-function registrationRemarks(p){const labels=[];if(['優良教師','傑出教師'].includes(p.award))labels.push(p.award);if(/新進(?:主治)?醫師/.test(p.note||''))labels.push('新進醫師');if(/主桌/.test(p.note||''))labels.push('主桌');return labels.join('、')}
+function registrationRemarks(p){const labels=[];if(['優良教師','傑出教師'].includes(p.award))labels.push(p.award);if(/新進(?:主治)?醫師/.test(p.note||''))labels.push('新進醫師');return labels.join('、')}
 function publicRegistrations(){
- const cache=typeof CacheService==='undefined'?null:CacheService.getScriptCache();const cached=cache?.get('masked-registrations-v1');if(cached){try{return JSON.parse(cached)}catch{}}
+ const cache=typeof CacheService==='undefined'?null:CacheService.getScriptCache();const cached=cache?.get('masked-registrations-v2');if(cached){try{return JSON.parse(cached)}catch{}}
  const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'));
  const people=readRoster(ss.getSheetByName('賓客資料')).filter(p=>p.expected).map(p=>({name:maskRegistrationName(p.name),department:p.department,title:p.title,category:p.category,remarks:registrationRemarks(p)}));
- const result={people};const json=JSON.stringify(result);if(json.length<85000)cache?.put('masked-registrations-v1',json,60);return result;
+ const result={people};const json=JSON.stringify(result);if(json.length<85000)cache?.put('masked-registrations-v2',json,60);return result;
 }
 
 function publicEvent(){let links={};try{links=JSON.parse(PropertiesService.getScriptProperties().getProperty('EVENT_LINKS')||'{}')}catch{}return {links:Object.fromEntries(EVENT_FIELDS.map(k=>[k,typeof links[k]==='string'?links[k]:'']))}}
