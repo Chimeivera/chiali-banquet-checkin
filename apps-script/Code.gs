@@ -5,7 +5,7 @@ function setup(){
  if(!ss.getSheetByName('操作紀錄'))ss.insertSheet('操作紀錄').appendRow(['時間','操作','人員ID','內容']);
 }
 function doGet(){return HtmlService.createHtmlOutput('餐敘後端已部署。請從 GitHub 簽到網頁使用。')}
-function doPost(e){let q={},status=200,data;try{q=JSON.parse(e.parameter.payload||'{}');const props=PropertiesService.getScriptProperties();authorizeRequest(q,props);data=dispatch(q)}catch(err){status=err.status||400;data={error:err.message,code:err.code||''}}const reply=JSON.stringify({requestId:q.requestId,status,data}).replace(/</g,'\\u003c');const origin=JSON.stringify(PropertiesService.getScriptProperties().getProperty('ALLOWED_ORIGIN')||'https://chimeivera.github.io');return HtmlService.createHtmlOutput('<script>window.top.postMessage('+reply+','+origin+');</script>').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)}
+function doPost(e){let q={},status=200,data;try{q=JSON.parse(e.parameter.payload||'{}');const props=PropertiesService.getScriptProperties();authorizeRequest(q,props);data=dispatch(q)}catch(err){status=err.status||400;data={error:err.message,code:err.code||''}}const reply=JSON.stringify({requestId:q.requestId,status,data}).replace(/</g,'\\u003c');if(q.transport==='json')return ContentService.createTextOutput(reply).setMimeType(ContentService.MimeType.JSON);const origin=JSON.stringify(PropertiesService.getScriptProperties().getProperty('ALLOWED_ORIGIN')||'https://chimeivera.github.io');return HtmlService.createHtmlOutput('<script>window.top.postMessage('+reply+','+origin+');</script>').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)}
 function dispatch(q){
  if(q.method==='POST'&&q.path==='/api/admin/login')return adminLogin(q.body||{});
  if(q.method==='POST'&&q.path==='/api/public/event')return publicEvent();
@@ -47,10 +47,10 @@ const EVENT_FIELDS=['newDoctors','excellentTeachers','outstandingTeachers','sati
 function maskRegistrationName(name){const chars=Array.from(String(name||'').replace(/[（(][^）)]*[）)]/g,'').trim());if(chars.length<=1)return '○';if(chars.length===2)return chars[0]+'○';return chars[0]+'○'.repeat(Math.min(chars.length-2,3))+chars[chars.length-1]}
 function registrationRemarks(p){const labels=[];if(['優良教師','傑出教師'].includes(p.award))labels.push(p.award);if(/新進(?:主治)?醫師/.test(p.note||''))labels.push('新進醫師');return labels.join('、')}
 function publicRegistrations(){
- const cache=typeof CacheService==='undefined'?null:CacheService.getScriptCache();const cached=cache?.get('masked-registrations-v2');if(cached){try{return JSON.parse(cached)}catch{}}
+ const cache=typeof CacheService==='undefined'?null:CacheService.getScriptCache();const cached=cache?.get('masked-registrations-v3');if(cached){try{return JSON.parse(cached)}catch{}}
  const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'));
  const people=readRoster(ss.getSheetByName('賓客資料')).filter(p=>p.expected).map(p=>({name:maskRegistrationName(p.name),department:p.department,title:p.title,category:p.category,remarks:registrationRemarks(p)}));
- const result={people};const json=JSON.stringify(result);if(json.length<85000)cache?.put('masked-registrations-v2',json,60);return result;
+ const result={people};const json=JSON.stringify(result);if(json.length<85000)cache?.put('masked-registrations-v3',json,10);return result;
 }
 
 function publicEvent(){let links={};try{links=JSON.parse(PropertiesService.getScriptProperties().getProperty('EVENT_LINKS')||'{}')}catch{}return {links:Object.fromEntries(EVENT_FIELDS.map(k=>[k,typeof links[k]==='string'?links[k]:'']))}}
