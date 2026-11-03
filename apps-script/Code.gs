@@ -9,7 +9,7 @@ function doPost(e){let q={},status=200,data;try{q=JSON.parse(e.parameter.payload
 function dispatch(q){
  if(q.method==='POST'&&q.path==='/api/admin/login')return adminLogin(q.body||{});
  if(q.method==='POST'&&q.path==='/api/public/event')return publicEvent();
- if(q.method==='POST'&&q.path==='/api/public/registrations')return publicRegistrations();
+ if(q.method==='POST'&&q.path==='/api/public/registrations')return publicRegistrations(q.body||{});
  if(q.method==='POST'&&q.path==='/api/admin/event')return saveEvent(q.body||{});
  if(q.method==='POST'&&q.path==='/api/public/lookup')return publicLookup(q.body||{});
  if(q.method==='GET'&&q.path==='/api/people'){const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'));return readRoster(ss.getSheetByName('賓客資料'))}
@@ -46,11 +46,13 @@ const EVENT_FIELDS=['newDoctors','excellentTeachers','outstandingTeachers','sati
 
 function maskRegistrationName(name){const chars=Array.from(String(name||'').replace(/[（(][^）)]*[）)]/g,'').trim());if(chars.length<=1)return '○';if(chars.length===2)return chars[0]+'○';return chars[0]+'○'.repeat(Math.min(chars.length-2,3))+chars[chars.length-1]}
 function registrationRemarks(p){const labels=[];if(['優良教師','傑出教師'].includes(p.award))labels.push(p.award);if(/新進(?:主治)?醫師/.test(p.note||''))labels.push('新進醫師');return labels.join('、')}
-function publicRegistrations(){
- const cache=typeof CacheService==='undefined'?null:CacheService.getScriptCache();const cached=cache?.get('masked-registrations-v3');if(cached){try{return JSON.parse(cached)}catch{}}
- const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'));
- const people=readRoster(ss.getSheetByName('賓客資料')).filter(p=>p.expected).map(p=>({name:maskRegistrationName(p.name),department:p.department,title:p.title,category:p.category,remarks:registrationRemarks(p)}));
- const result={people};const json=JSON.stringify(result);if(json.length<85000)cache?.put('masked-registrations-v3',json,10);return result;
+function publicRegistrations(body){
+ const query=String(body?.query||'').trim().toLocaleLowerCase();if(query.length>80)throw Error('查詢文字請勿超過80字');
+ const cache=typeof CacheService==='undefined'?null:CacheService.getScriptCache();let entries;const cached=cache?.get('registration-search-private-v1');
+ if(cached){try{entries=JSON.parse(cached)}catch{}}
+ if(!entries){const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'));entries=readRoster(ss.getSheetByName('賓客資料')).filter(p=>p.expected&&p.name!=='王覲文').map(p=>({name:p.name,department:p.department,title:p.title,category:p.category,remarks:registrationRemarks(p)}));const json=JSON.stringify(entries);if(json.length<85000)cache?.put('registration-search-private-v1',json,10)}
+ const people=entries.filter(p=>!query||[p.name,maskRegistrationName(p.name),p.department,p.title,p.category,p.remarks].some(v=>String(v||'').toLocaleLowerCase().includes(query))).map(p=>({...p,name:maskRegistrationName(p.name)}));
+ return {people,total:entries.length,departments:[...new Set(entries.map(p=>p.department).filter(Boolean))],searchVersion:1};
 }
 
 function publicEvent(){let links={};try{links=JSON.parse(PropertiesService.getScriptProperties().getProperty('EVENT_LINKS')||'{}')}catch{}return {links:Object.fromEntries(EVENT_FIELDS.map(k=>[k,typeof links[k]==='string'?links[k]:'']))}}
