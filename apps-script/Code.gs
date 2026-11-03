@@ -83,7 +83,7 @@ function operate(q){const ss=SpreadsheetApp.openById(PropertiesService.getScript
   const p=roster[index];if(p.checked)return {ok:true,alreadyChecked:true,person:guestReceipt(p)};
   if(!p.expected&&remaining<=0)fail('請先找院內工作人員協助確認座位，再辦理報到','capacity');
   const keys=['checked','operator','updated'];
-  if(!p.expected){if(!['葷','素食','蛋奶素'].includes(b.meal))throw Error('請先確認餐別');p.meal=b.meal;keys.push('meal')}
+  // 賓客餐別依既有名單安排，簽到時不接受前端覆寫。
   p.checked=1;p.operator='賓客自行報到';p.updated=now;
   writePerson(sheet,p,roster.rowNumbers[index],roster.columns,keys);log('賓客自行報到',id,p.meal||'葷');SpreadsheetApp.flush();
   return {ok:true,alreadyChecked:false,person:guestReceipt(p)};
