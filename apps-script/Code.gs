@@ -14,7 +14,7 @@ function dispatch(q){
  if(q.method==='POST'&&q.path==='/api/public/lookup')return publicLookup(q.body||{});
  if(q.method==='GET'&&q.path==='/api/people'){const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'));return readRoster(ss.getSheetByName('賓客資料'))}
  const lock=LockService.getScriptLock(),guest=q.path==='/api/public/checkin';
- if(!lock.tryLock(guest?200:25000)){const e=Error('目前多人報到中，系統會自動重試，請稍候');e.status=503;e.code='busy';throw e}
+ if(!lock.tryLock(guest?3000:25000)){const e=Error('目前多人報到中，系統會自動重試，請稍候');e.status=503;e.code='busy';throw e}
  try{return operate(q)}finally{lock.releaseLock()}
 }
 function fail(message,code){const err=Error(message);err.status=409;err.code=code;throw err}
