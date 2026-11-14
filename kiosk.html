@@ -24,6 +24,7 @@ h1{margin:.4vh 0 0;font-family:'Noto Serif TC',serif;font-weight:600;font-size:c
 .step-tag{display:inline-block;vertical-align:middle;margin-right:.5em;padding:.15em .6em;border-radius:999px;background:var(--gold);color:#fff;font-size:.45em;letter-spacing:.1em}
 .scan-hint{margin:0;font-size:clamp(17px,2.4vh,26px)}
 .scan-hint strong{color:var(--navy)}
+.who{margin:0;font-size:clamp(15px,2vh,22px)}.who span{display:inline-block;margin-right:.4em;padding:.05em .55em;border:1px solid var(--gold);border-radius:999px;color:var(--gold);font-size:.85em}
 .steps{width:min(100%,980px);display:grid;grid-template-columns:1fr;gap:1.2vh}
 .step{background:#fff;border:1px solid var(--line);border-radius:20px;padding:1.5vh 3vw;display:flex;flex-direction:column;justify-content:center;gap:.4vh}
 .step small{font-size:clamp(13px,1.7vh,18px);color:var(--gold);letter-spacing:.12em}
@@ -40,7 +41,8 @@ h1{margin:.4vh 0 0;font-family:'Noto Serif TC',serif;font-weight:600;font-size:c
 .help{margin:0;font-size:clamp(14px,1.8vh,19px);opacity:.75}
 @media (orientation:landscape) and (min-aspect-ratio:4/3){
  .kiosk{display:grid;grid-template-columns:1.05fr 1fr;grid-template-areas:"head head" "scan steps" "scan credit" "help help";align-items:center;justify-items:center;column-gap:4vw}
- .head{grid-area:head}.scan{grid-area:scan}.steps{grid-area:steps;grid-template-columns:1fr;gap:1.2vh}.plus{display:none}.credit{grid-area:credit}.help{grid-area:help}
+ .head{grid-area:head}.scan{grid-area:scan}.who{margin:0;font-size:clamp(15px,2vh,22px)}.who span{display:inline-block;margin-right:.4em;padding:.05em .55em;border:1px solid var(--gold);border-radius:999px;color:var(--gold);font-size:.85em}
+.steps{grid-area:steps;grid-template-columns:1fr;gap:1.2vh}.plus{display:none}.credit{grid-area:credit}.help{grid-area:help}
  .qr-frame img{width:min(52vh,40vw)}
 }
 </style>
@@ -58,18 +60,18 @@ h1{margin:.4vh 0 0;font-family:'Noto Serif TC',serif;font-weight:600;font-size:c
   <p class="scan-title"><span class="step-tag">STEP 1</span>手機掃描 QR Code 報到</p>
   <div class="qr-frame"><img src="./checkin-qr.svg" alt="報到 QR Code：開啟賓客簽到頁"></div>
   <p class="scan-hint">打開<strong>手機相機</strong>對準上方 QR Code，<strong>依畫面完成報到</strong></p>
+  <p class="who"><span>院內同仁</span>輸入姓名或人事號　<span>院外嘉賓</span>點選姓名</p>
  </section>
 
  <section class="steps" aria-label="學分取得方式">
-  <div class="step survey"><img src="./survey-qr.svg" alt="滿意度調查 QR Code"><div><small><span class="step-tag">STEP 2</span>餐敘結束後</small><br><strong>📝 填寫滿意度調查</strong><br><span>報到完成頁也有連結，可稍後再填</span></div></div>
+  <div class="step survey"><img src="./survey-qr.svg" alt="滿意度調查 QR Code"><div><small><span class="step-tag">STEP 2</span>餐敘結束後</small><br><strong>📝 填寫滿意度調查</strong><br><span>院內同仁適用・報到完成頁也有連結</span></div></div>
  </section>
 
  <aside class="credit" aria-label="學分提醒">
   <span class="badge" aria-hidden="true">🎓</span>
-  <p>完成<b>報到</b>＋<b>滿意度調查</b>，即可取得<br>臨床教師認證「進階課程」<b>1.5 學分</b><small>兩項都完成才能認列學分</small></p>
+  <p>院內同仁完成<b>報到</b>＋<b>滿意度調查</b>，即可取得<br>臨床教師認證「進階課程」<b>1.5 學分</b><small>兩項都完成才能認列學分・需要協助請洽現場工作人員</small></p>
  </aside>
 
- <p class="help">需要協助，請洽現場院內工作人員</p>
 </main>
 <script>
 // 讓平板保持螢幕常亮（瀏覽器支援時）；頁面重新顯示時重新取得。
