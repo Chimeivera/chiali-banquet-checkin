@@ -63,12 +63,29 @@ function publicRegistrations(body){
 
 function publicEvent(){let links={};try{links=JSON.parse(PropertiesService.getScriptProperties().getProperty('EVENT_LINKS')||'{}')}catch{}return {links:Object.fromEntries(EVENT_FIELDS.map(k=>[k,typeof links[k]==='string'?links[k]:'']))}}
 function saveEvent(body){const links={};for(const k of EVENT_FIELDS){const url=String(body.links?.[k]||'').trim();if(url&&(!/^https:\/\/[^\s<>"']+$/i.test(url)||url.length>1500))throw Error('請填入完整 HTTPS 連結，或留白');links[k]=url}PropertiesService.getScriptProperties().setProperty('EVENT_LINKS',JSON.stringify(links));return {ok:true,...publicEvent()}}
-function publicLookup(body){
- const query=String(body.query||'').trim();if(query.length<2||query.length>80)throw Error('請輸入完整姓名或人事號');
- let roster;const cache=typeof CacheService==='undefined'?null:CacheService.getScriptCache();const cached=cache?.get('guest-lookup-v2');
+function guestDirectory(){
+ let roster;const cache=typeof CacheService==='undefined'?null:CacheService.getScriptCache();const cached=cache?.get('guest-lookup-v3');
  if(cached){try{roster=JSON.parse(cached)}catch{}}
- if(!roster){const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'));roster=readRoster(ss.getSheetByName('賓客資料')).map(p=>({id:p.id,name:p.name,department:p.department,title:p.title,expected:p.expected,checked:p.checked}));const text=JSON.stringify(roster);if(text.length<85000)cache?.put('guest-lookup-v2',text,15)}
- const found=roster.filter(p=>p.id.toUpperCase()===query.toUpperCase()||p.name===query);if(found.length>5)throw Error('請改用人事號查詢，或洽現場工作人員');return {people:found.map(guestIdentity)};
+ if(!roster){const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'));roster=readRoster(ss.getSheetByName('賓客資料')).map(p=>({id:p.id,name:p.name,department:p.department,title:p.title,category:p.category,expected:p.expected,checked:p.checked}));const text=JSON.stringify(roster);if(text.length<85000)cache?.put('guest-lookup-v3',text,15)}
+ return roster;
+}
+function compactName(s){return String(s||'').replace(/[\s　]+/g,'')}
+const EXTERNAL_GUEST_CATEGORY='醫師公會';
+const PARTIAL_LOOKUP_LIMIT=8;
+function publicLookup(body){
+ const roster=guestDirectory();
+ // 院外嘉賓：直接列出已報名的醫師公會賓客供點選，免問姓名寫法。
+ if(body.list==='external'){const people=roster.filter(p=>p.expected&&p.category===EXTERNAL_GUEST_CATEGORY);return {people:people.map(guestIdentity),exact:false,list:true}}
+ const query=compactName(String(body.query||'').trim());if(query.length<2||query.length>80)throw Error('請輸入至少兩個字的姓名，或人事號');
+ const upper=query.toUpperCase();
+ const found=roster.filter(p=>p.id.toUpperCase()===upper||compactName(p.name)===query);
+ if(found.length){if(found.length>5)throw Error('請改用人事號查詢，或洽現場工作人員');return {people:found.map(guestIdentity),exact:true}}
+ // 人事號不做部分比對，避免被用來逐筆列舉名單。
+ if(/^[A-Z0-9-]+$/.test(upper))return {people:[],exact:true};
+ // 部分姓名：姓名以○遮罩，搭配單位與職稱讓本人選擇；筆數過多時請賓客多輸入字。
+ const partial=roster.filter(p=>compactName(p.name).includes(query));
+ if(partial.length>PARTIAL_LOOKUP_LIMIT)throw Error('符合的人數較多，請再多輸入一個字，或改用人事號');
+ return {people:partial.map(p=>({...guestIdentity(p),name:maskRegistrationName(p.name)})),exact:false};
 }
 function guestSignature(id,expires){return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(id+'|'+expires,PropertiesService.getScriptProperties().getProperty('ACCESS_KEY'))).replace(/=+$/,'')}
 function guestToken(id){const expires=Date.now()+600000;return encodeURIComponent(id)+'.'+expires+'.'+guestSignature(id,expires)}
