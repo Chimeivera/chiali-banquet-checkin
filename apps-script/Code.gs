@@ -97,7 +97,7 @@ function guestSignature(id,expires){return Utilities.base64EncodeWebSafe(Utiliti
 function guestToken(id){const expires=Date.now()+600000;return encodeURIComponent(id)+'.'+expires+'.'+guestSignature(id,expires)}
 function verifyGuestToken(token){const parts=String(token||'').split('.');if(parts.length!==3)throw Error('請重新查詢本人資料');const id=decodeURIComponent(parts[0]),expires=Number(parts[1]);if(!Number.isFinite(expires)||expires<Date.now()||expires>Date.now()+600000||parts[2]!==guestSignature(id,expires))throw Error('資料確認已逾時，請重新查詢');return id}
 function guestIdentity(p){return {name:p.name,department:p.department,title:p.title,expected:p.expected,checked:p.checked,token:guestToken(p.id)}}
-function guestReceipt(p){return {name:p.name,department:p.department,award:p.award||'',meal:p.meal||'葷',checked:p.checked,isMainTable:isMainTableGuest(p)}}
+function guestReceipt(p){return {name:p.name,department:p.department,award:p.award||'',meal:p.meal||'葷',checked:p.checked,isMainTable:isMainTableGuest(p),isStaff:p.staff===true||/司機/.test(p.name)}}
 // 主桌：院長、副院長、醫務秘書、醫師公會貴賓，或座位欄填「主桌…」者。
 function isMainTableGuest(p){const title=String(p.title||'').replace(/[\s　]+/g,'');return p.category==='醫師公會'||/^(院長|副院長|醫務秘書)$/.test(title)||/^主桌(?:$|[\s　0-9０-９一二三四五六七八九十（(])/u.test(String(p.seat||'').trim())}
 
