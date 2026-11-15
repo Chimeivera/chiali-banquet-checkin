@@ -78,12 +78,18 @@ function publicLookup(body){
  if(body.list==='external'){const people=roster.filter(p=>p.expected&&p.category===EXTERNAL_GUEST_CATEGORY);return {people:people.map(guestIdentity),exact:false,list:true}}
  const query=compactName(String(body.query||'').trim());if(query.length<2||query.length>80)throw Error('請輸入至少兩個字的姓名，或人事號');
  const upper=query.toUpperCase();
- const found=roster.filter(p=>p.id.toUpperCase()===upper||compactName(p.name)===query);
+ const isExt=p=>p.category===EXTERNAL_GUEST_CATEGORY;
+ const side=body.mode==='internal'?p=>!isExt(p):body.mode==='external'?isExt:()=>true;
+ const otherHint=list=>body.mode==='internal'&&list.some(isExt)?'external':body.mode==='external'&&list.some(p=>!isExt(p))?'internal':'';
+ const all=roster.filter(p=>p.id.toUpperCase()===upper||compactName(p.name)===query);
+ const found=all.filter(side);
+ if(!found.length&&all.length)return {people:[],exact:true,hint:otherHint(all)};
  if(found.length){if(found.length>5)throw Error('請改用人事號查詢，或洽現場工作人員');return {people:found.map(guestIdentity),exact:true}}
  // 人事號不做部分比對，避免被用來逐筆列舉名單。
  if(/^[A-Z0-9-]+$/.test(upper))return {people:[],exact:true};
  // 部分姓名：姓名以○遮罩，搭配單位與職稱讓本人選擇；筆數過多時請賓客多輸入字。
- const partial=roster.filter(p=>compactName(p.name).includes(query));
+ const partialAll=roster.filter(p=>compactName(p.name).includes(query));const partial=partialAll.filter(side);
+ if(!partial.length&&partialAll.length)return {people:[],exact:false,hint:otherHint(partialAll)};
  if(partial.length>PARTIAL_LOOKUP_LIMIT)throw Error('符合的人數較多，請再多輸入一個字，或改用人事號');
  return {people:partial.map(p=>({...guestIdentity(p),name:maskRegistrationName(p.name)})),exact:false};
 }
