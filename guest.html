@@ -35,12 +35,13 @@ async function requestOnce(path,body){
   throw error;
  }finally{clearTimeout(timer);console.info('報到服務',path,Date.now()-started+'ms')}
 }
-function retryDelay(attempt){return (300+Math.random()*350)*(attempt+1)}
+// 多人同時報到時錯開重試：最多 12 次、約 75 秒內，每次間隔 0.6～4 秒。
+const MAX_ATTEMPTS=12,MAX_WAIT_MS=75000;function retryDelay(attempt){return Math.min(4000,(600+Math.random()*900)*(attempt+1))}
 async function request(path,body){
  const started=Date.now();
- for(let attempt=0;attempt<3;attempt++){
+ for(let attempt=0;attempt<MAX_ATTEMPTS;attempt++){
   try{return await requestOnce(path,body)}catch(err){
-   if(err.code!=='busy'||attempt===2||Date.now()-started>10000)throw err;
+   if(err.code!=='busy'||attempt===MAX_ATTEMPTS-1||Date.now()-started>MAX_WAIT_MS)throw err;
    const hint=path==='/api/public/checkin'?document.querySelector('#resultdialog .muted'):document.querySelector('#message');
    if(hint)hint.textContent='系統正在處理其他報到，請稍候，無須重複點選。';
    await new Promise(r=>setTimeout(r,retryDelay(attempt)));
@@ -69,7 +70,9 @@ $('#query').addEventListener('compositionstart',()=>{queryComposing=true});
 $('#query').addEventListener('compositionend',()=>{queryComposing=false;normalizePersonnelInput()});
 $('#query').addEventListener('input',e=>{if(!queryComposing&&!e.isComposing)normalizePersonnelInput()});
 $('#lookup').onsubmit=async e=>{e.preventDefault();if(busy||queryComposing)return;normalizePersonnelInput();const query=normalizeGuestQuery($('#query').value,guestMode);$('#query').value=query;if(query.length<2){$('#message').textContent='請輸入至少兩個字的姓名，或人事號';return}busy=true;syncBusyControls();$('#lookupbutton').textContent='處理中…';$('#message').textContent='';$('#results').innerHTML='';candidates=[];let unique=false;try{const result=await request('/api/public/lookup',{query});if(!Array.isArray(result.people))throw Error('賓客報到服務尚未就緒，請現場工作人員協助。');candidates=result.people;needsRecheck=false;const exact=result.exact!==false;if(candidates.length===1&&exact)unique=true;else if(candidates.length>=1)renderCandidates(exact);else $('#message').textContent='歡迎蒞臨！目前尚未找到您的資料，請先確認輸入的姓名'+(guestMode==='internal'?'或人事號':'')+'是否正確。\n若尚未完成報名，請洽現場工作人員，我們很樂意協助您安排座位並完成報到 🤍'}catch(e){$('#message').textContent=e.message}finally{busy=false;syncBusyControls();$('#lookupbutton').textContent='送出報到'}if(unique)await checkin(0)};
-async function checkin(index){if(busy||needsRecheck)return;const p=candidates[index];busy=true;syncBusyControls();$('#lookupbutton').disabled=true;document.querySelectorAll('[data-confirm]').forEach(b=>b.disabled=true);$('#confirmdialog').close();const dialog=$('#resultdialog');dialog.innerHTML='<div class="progress-text" role="status" aria-live="polite"><div class="spinner"></div><h2>正在儲存報到資料</h2><p class="muted">正在連線，請勿重複點選。</p><span id="elapsed" class="elapsed"></span></div>';dialog.showModal();const started=Date.now(),ticker=setInterval(()=>{const elapsed=$('#elapsed');if(elapsed)elapsed.textContent='已等候 '+Math.floor((Date.now()-started)/1000)+' 秒'+(Date.now()-started>8000?'，請保持此視窗開啟。':'')},1000);try{const result=await request('/api/public/checkin',{token:p.token});if(!result.ok||!result.person)throw Error('尚未確認報到，請重新查詢或找工作人員協助');p.checked=1;dialog.innerHTML=receiptHTML({...p,...result.person},result.alreadyChecked);dialog.scrollTop=0;$('#done').onclick=()=>{dialog.close();$('#query').value='';$('#results').innerHTML='';candidates=[];$('#query').focus()}}catch(e){needsRecheck=true;dialog.innerHTML='<h2>請確認報到狀態</h2><p>'+esc(e.message)+'</p><button class="wide" id="retry">重新簽到</button>';$('#retry').onclick=()=>{dialog.close();$('#results').innerHTML='';$('#message').textContent='請再按「送出報到」重新確認報到狀態。'}}finally{clearInterval(ticker);busy=false;syncBusyControls();}}
+const WALKIN_MSG='歡迎蒞臨！您目前不在報名名單中，請洽現場院內工作人員，我們很樂意為您確認餐點、安排座位並完成報到 🤍';
+function showWalkinNeeded(){const d=$('#resultdialog');d.innerHTML='<h2>請洽現場工作人員</h2><p>'+WALKIN_MSG+'</p><button class="wide" id="walkinok">我知道了</button>';if(!d.open)d.showModal();$('#walkinok').onclick=()=>{d.close();$('#query').value='';$('#results').innerHTML='';candidates=[]}}
+async function checkin(index){if(busy||needsRecheck)return;const p=candidates[index];if(p&&p.expected===false&&!p.checked){$('#confirmdialog').open&&$('#confirmdialog').close();showWalkinNeeded();return}busy=true;syncBusyControls();$('#lookupbutton').disabled=true;document.querySelectorAll('[data-confirm]').forEach(b=>b.disabled=true);$('#confirmdialog').close();const dialog=$('#resultdialog');dialog.innerHTML='<div class="progress-text" role="status" aria-live="polite"><div class="spinner"></div><h2>正在儲存報到資料</h2><p class="muted">正在連線，請勿重複點選。</p><span id="elapsed" class="elapsed"></span></div>';dialog.showModal();const started=Date.now(),ticker=setInterval(()=>{const elapsed=$('#elapsed');if(elapsed)elapsed.textContent='已等候 '+Math.floor((Date.now()-started)/1000)+' 秒'+(Date.now()-started>8000?'，請保持此視窗開啟。':'')},1000);try{const result=await request('/api/public/checkin',{token:p.token});if(!result.ok||!result.person)throw Error('尚未確認報到，請重新查詢或找工作人員協助');p.checked=1;dialog.innerHTML=receiptHTML({...p,...result.person},result.alreadyChecked);dialog.scrollTop=0;$('#done').onclick=()=>{dialog.close();$('#query').value='';$('#results').innerHTML='';candidates=[];$('#query').focus()}}catch(e){if(e.code==='walkin-needed'){showWalkinNeeded();return}needsRecheck=true;dialog.innerHTML='<h2>請確認報到狀態</h2><p>'+esc(e.message)+'</p><button class="wide" id="retry">重新簽到</button>';$('#retry').onclick=()=>{dialog.close();$('#results').innerHTML='';$('#message').textContent='請再按「送出報到」重新確認報到狀態。'}}finally{clearInterval(ticker);busy=false;syncBusyControls();}}
 try{const query=sessionStorage.getItem('banquet-guest-query');if(query){sessionStorage.removeItem('banquet-guest-query');setGuestMode('internal');$('#query').value=query;$('#lookup').requestSubmit()}}catch{}
 
 $('#editquery').onclick=()=>{$('#confirmdialog').close();$('#query').focus()};
@@ -81,6 +84,13 @@ function fromScroll(){if(!atHome)return;const header=document.querySelector('hea
 if(!atHome){mark(file);return}if(homeHashes.includes(location.hash.slice(1)))mark(location.hash);else fromScroll();
 let scheduled=false;window.addEventListener('scroll',()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;fromScroll()})},{passive:true});window.addEventListener('resize',fromScroll);window.addEventListener('hashchange',()=>{if(homeHashes.includes(location.hash.slice(1)))mark(location.hash);else fromScroll()});window.addEventListener('load',fromScroll);anchors.forEach(a=>a.addEventListener('click',()=>{const u=new URL(a.href);if(u.pathname.split('/').pop()==='index.html'&&homeHashes.includes(u.hash.slice(1)))mark(u.hash)}));
 })();
+</script><script>
+/* 填寫滿意度前提醒伴手禮 */
+(()=>{const MSG='離開時，請記得到<b>出口門口</b>領取<b>糖霜檸檬蛋糕</b>伴手禮 🍋';
+function ensure(){let d=document.getElementById('giftReminder');if(d)return d;d=document.createElement('dialog');d.id='giftReminder';d.style.cssText='box-sizing:border-box;max-width:420px;width:calc(100% - 32px);margin:auto;inset:0;max-height:90vh;overflow:auto;background:#fff;border:2px solid #ae8e50;border-radius:16px;padding:22px 20px;text-align:center;font-family:inherit;color:#192840';
+d.innerHTML='<div style="font-size:44px;line-height:1">🍋</div><h2 style="margin:8px 0 6px;font-size:22px">感謝您的參與！</h2><p style="margin:0 0 16px;font-size:18px;line-height:1.7">'+MSG+'</p><a id="giftGo" target="_blank" rel="noopener noreferrer" style="display:block;padding:14px;border-radius:10px;background:#192840;color:#fff;text-decoration:none;font-weight:700;font-size:18px">📝 前往填寫滿意度調查 ↗</a><button type="button" id="giftClose" style="margin-top:10px;width:100%;padding:12px;border:1px solid #c9b98f;border-radius:10px;background:#fff;color:#192840;font:inherit;font-size:16px">稍後再填</button>';
+document.body.appendChild(d);d.querySelector('#giftClose').onclick=()=>d.close();d.querySelector('#giftGo').onclick=()=>setTimeout(()=>d.close(),50);return d}
+document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a[href*="docs.google.com/forms"]');if(!a||a.id==='giftGo'||a.classList.contains('disabled'))return;e.preventDefault();const d=ensure();d.querySelector('#giftGo').href=a.href;if(!d.open)d.showModal()},true);})();
 </script></body></html>
 
 

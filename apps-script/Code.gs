@@ -104,7 +104,7 @@ function operate(q){const ss=SpreadsheetApp.openById(PropertiesService.getScript
  if(q.method==='POST'&&q.path==='/api/public/checkin'){
   const id=verifyGuestToken(b.token),index=roster.findIndex(p=>p.id===id);if(index<0)throw Error('查無資料，請洽工作人員');
   const p=roster[index];if(p.checked)return {ok:true,alreadyChecked:true,person:guestReceipt(p)};
-  if(!p.expected&&remaining<=0)fail('請先找院內工作人員協助確認座位，再辦理報到','capacity');
+  if(!p.expected)fail('您目前不在報名名單中，請洽現場院內工作人員協助報到與安排座位','walkin-needed');
   const keys=['checked','operator','updated'];
   // 賓客餐別依既有名單安排，簽到時不接受前端覆寫。
   p.checked=1;p.operator='賓客自行報到';p.updated=now;
