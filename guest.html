@@ -16,7 +16,7 @@ const endpoint='https://script.google.com/macros/s/AKfycbxQGwXbRCm3CqEXkIEfD0EDk
 window.addEventListener('message',e=>{if(!/^https:\/\/[a-z0-9-]+\.googleusercontent\.com$/.test(e.origin))return;const m=e.data,task=m&&pending.get(m.requestId);if(!task)return;pending.delete(m.requestId);clearTimeout(task.timer);task.frame.remove();if(m.status>=400)task.reject(Object.assign(Error(m.data?.error||'請洽現場工作人員協助'),{code:m.data?.code,status:m.status}));else task.resolve(m.data)});
 function legacyRequestOnce(path,body){return new Promise((resolve,reject)=>{const requestId=crypto.randomUUID(),frame=document.createElement('iframe'),form=document.createElement('form'),input=document.createElement('input');frame.name='guest-'+requestId;frame.hidden=true;document.body.appendChild(frame);form.method='POST';form.action=endpoint;form.target=frame.name;form.hidden=true;input.name='payload';input.value=JSON.stringify({requestId,origin:location.origin,path,method:'POST',body});form.appendChild(input);document.body.appendChild(form);const timer=setTimeout(()=>{pending.delete(requestId);frame.remove();reject(Object.assign(Error('連線逾時，尚無法確認報到結果。請重新查詢確認，或洽現場工作人員。'),{code:'timeout'}))},20000);pending.set(requestId,{resolve,reject,frame,timer});form.submit();form.remove()})}
 
-let legacyTransport=false;
+let legacyTransport=false,gotJson=false;
 async function requestOnce(path,body){
  if(legacyTransport)return legacyRequestOnce(path,body);
  const requestId=crypto.randomUUID(),controller=new AbortController(),started=Date.now();
@@ -24,7 +24,7 @@ async function requestOnce(path,body){
  try{
   const response=await fetch(endpoint,{method:'POST',body:new URLSearchParams({payload:JSON.stringify({requestId,origin:location.origin,path,method:'POST',body,transport:'json'})}),credentials:'omit',redirect:'follow',signal:controller.signal});
   const raw=await response.text();let message;
-  try{message=JSON.parse(raw)}catch{if(/<html|<!doctype|<script/i.test(raw)){legacyTransport=true;return await legacyRequestOnce(path,body)}throw Error('後端回覆格式不正確，請洽工作人員')}
+  try{message=JSON.parse(raw);gotJson=true}catch{if(/<html|<!doctype|<script/i.test(raw)){if(gotJson)throw Object.assign(Error('目前使用人數較多，系統正在自動重試，請稍候'),{code:'busy'});legacyTransport=true;return await legacyRequestOnce(path,body)}throw Error('後端回覆格式不正確，請洽工作人員')}
   if(message.requestId!==requestId)throw Error('後端回覆無法核對，請重新查詢');
   if(message.status>=400)throw Object.assign(Error(message.data?.error||'請洽現場工作人員協助'),{code:message.data?.code,status:message.status});
   return message.data;
@@ -41,7 +41,8 @@ async function request(path,body){
  const started=Date.now();
  for(let attempt=0;attempt<MAX_ATTEMPTS;attempt++){
   try{return await requestOnce(path,body)}catch(err){
-   if(err.code!=='busy'||attempt===MAX_ATTEMPTS-1||Date.now()-started>MAX_WAIT_MS)throw err;
+   const retryable=err.code==='busy'||(err.code==='timeout'&&path==='/api/public/lookup'&&attempt<2);
+   if(!retryable||attempt===MAX_ATTEMPTS-1||Date.now()-started>MAX_WAIT_MS)throw err;
    const hint=path==='/api/public/checkin'?document.querySelector('#resultdialog .muted'):document.querySelector('#message');
    if(hint)hint.textContent='系統正在處理其他報到，請稍候，無須重複點選。';
    await new Promise(r=>setTimeout(r,retryDelay(attempt)));

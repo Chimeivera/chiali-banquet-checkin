@@ -14,9 +14,34 @@ function dispatch(q){
  if(q.method==='POST'&&q.path==='/api/public/lookup')return publicLookup(q.body||{});
  if(q.method==='GET'&&q.path==='/api/people'){const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'));return readRoster(ss.getSheetByName('賓客資料'))}
  if(q.method==='GET'&&q.path==='/api/admin/lock')return {locked:eventLocked(),lockDate:eventLockDate()};
+ if(q.method==='POST'&&q.path==='/api/public/checkin')return fastGuestCheckin(q.body||{});
  const lock=LockService.getScriptLock(),guest=q.path==='/api/public/checkin';
  if(!lock.tryLock(guest?3000:25000)){const e=Error('目前多人報到中，系統會自動重試，請稍候');e.status=503;e.code='busy';throw e}
  try{return operate(q)}finally{lock.releaseLock()}
+}
+function fastGuestCheckin(b){
+ const id=verifyGuestToken(b.token);
+ const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID')),sheet=ss.getSheetByName('賓客資料');
+ const cols=sheet.getRange(1,1,1,sheet.getLastColumn()).getValues()[0].map(String);
+ const cell=sheet.getRange(2,1,Math.max(1,sheet.getLastRow()-1),1).createTextFinder(id).matchEntireCell(true).findNext();
+ if(!cell)throw Error('查無資料，請洽工作人員');
+ const row=cell.getRow();
+ const read=()=>{const v=sheet.getRange(row,1,1,cols.length).getValues()[0];const p={};cols.forEach((k,i)=>p[k]=String(v[i]??''));['expected','staff','awardDeclined'].forEach(k=>p[k]=p[k]==='true');p.checked=Number(p.checked||0);return p};
+ let p=read();
+ if(p.id!==id)throw Error('查無資料，請洽工作人員');
+ if(p.checked)return {ok:true,alreadyChecked:true,person:guestReceipt(p)};
+ if(!p.expected)fail('您目前不在報名名單中，請洽現場院內工作人員協助報到與安排座位','walkin-needed');
+ const lock=LockService.getScriptLock();
+ if(!lock.tryLock(4000)){const e=Error('目前多人報到中，系統會自動重試，請稍候');e.status=503;e.code='busy';throw e}
+ try{
+  p=read();if(p.checked)return {ok:true,alreadyChecked:true,person:guestReceipt(p)};
+  const now=Utilities.formatDate(new Date(),'Asia/Taipei','yyyy/MM/dd HH:mm:ss');
+  p.checked=1;p.operator='賓客自行報到';p.updated=now;
+  writePerson(sheet,p,row,cols,['checked','operator','updated']);
+  ss.getSheetByName('操作紀錄').appendRow([now,'賓客自行報到',id,p.meal||'葷']);
+  SpreadsheetApp.flush();
+  return {ok:true,alreadyChecked:false,person:guestReceipt(p)};
+ }finally{lock.releaseLock()}
 }
 function fail(message,code){const err=Error(message);err.status=409;err.code=code;throw err}
 // 活動當天起停用「完整重設」及「一鍵撤銷全部報到」，避免誤按清除正式報到資料。
