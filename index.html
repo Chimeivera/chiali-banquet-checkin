@@ -44,7 +44,7 @@ let scheduled=false;window.addEventListener('scroll',()=>{if(scheduled)return;sc
 })();
 </script><script>
 /* 填寫滿意度前提醒伴手禮 */
-(()=>{const MSG='離開時，請記得到<b>出口門口</b>領取<b>糖霜檸檬蛋糕</b>伴手禮 🍋';
+(()=>{const MSG='離開時，請記得帶走<b>糖霜檸檬蛋糕</b>伴手禮 🍋';
 function ensure(){let d=document.getElementById('giftReminder');if(d)return d;d=document.createElement('dialog');d.id='giftReminder';d.style.cssText='box-sizing:border-box;max-width:420px;width:calc(100% - 32px);margin:auto;inset:0;max-height:90vh;overflow:auto;background:#fff;border:2px solid #ae8e50;border-radius:16px;padding:22px 20px;text-align:center;font-family:inherit;color:#192840';
 d.innerHTML='<div style="font-size:44px;line-height:1">🍰</div><h2 style="margin:8px 0 6px;font-size:22px">感謝您的參與！</h2><p style="margin:0 0 16px;font-size:18px;line-height:1.7">'+MSG+'</p><a id="giftGo" target="_blank" rel="noopener noreferrer" style="display:block;padding:14px;border-radius:10px;background:#192840;color:#fff;text-decoration:none;font-weight:700;font-size:18px">📝 前往填寫滿意度調查 ↗</a><button type="button" id="giftClose" style="margin-top:10px;width:100%;padding:12px;border:1px solid #c9b98f;border-radius:10px;background:#fff;color:#192840;font:inherit;font-size:16px">稍後再填</button>';
 document.body.appendChild(d);d.querySelector('#giftClose').onclick=()=>d.close();d.querySelector('#giftGo').onclick=()=>setTimeout(()=>d.close(),50);return d}
