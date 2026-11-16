@@ -1,1 +1,29 @@
-{"name": "佳里奇美・餐敘迎賓", "short_name": "餐敘迎賓", "start_url": "./", "display": "standalone", "theme_color": "#192840", "background_color": "#f5f2eb", "icons": [{"src": "./icon.svg", "sizes": "any", "type": "image/svg+xml"}]}
+{
+ "name": "115年度教師聯誼餐敘｜佳里奇美醫院",
+ "short_name": "教師餐敘",
+ "start_url": "./index.html",
+ "scope": "./",
+ "display": "standalone",
+ "theme_color": "#192840",
+ "background_color": "#192840",
+ "icons": [
+  {
+   "src": "./icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "./icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "./icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}
