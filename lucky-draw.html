@@ -40,25 +40,30 @@ footer .award-tools{margin:0 auto 12px}
 <div class="winner" id="result" aria-live="polite"><div class="tag" id="winnerLabel"></div><strong id="winnerName"></strong><span id="winnerDetail"></span><span id="winnerRole" hidden></span><p class="award-call" id="awardCall">掌聲歡迎，快上台領獎囉！</p></div></div></section>
 </main>
 <footer><div class="award-tools" id="awardTools" hidden><button class="minor" id="redraw">重新抽獎</button></div><div class="toolbar"><button class="minor" id="setup">工作人員設定</button><button class="minor" id="demo">彩排試抽</button><button class="minor" id="previewOffice" hidden>預覽院長室</button><button class="minor" id="previewAssociation" hidden>預覽陳相國理事長</button><button class="minor" id="previewLin" hidden>預覽林士敦理事長</button><button class="minor" id="reset" hidden>清除試抽結果</button><button class="minor" id="full">全螢幕</button></div>115 年佳里奇美醫院 · 主治醫師暨臨床教師聯誼餐敘</footer>
-<dialog id="panel"><h2>抽獎設定</h2><p>已預先套用 153 位回覆出席者。若已知有人缺席，可先取消勾選。姓名可修正，也可加入臨時出席者。</p>
-<div class="controls"><input id="query" placeholder="搜尋姓名、科部或序號" aria-label="搜尋名單"><button class="minor" id="all">全選 153 位原名單</button><button class="minor" id="none">清除勾選</button><button class="minor" id="add">加入臨時出席者</button></div>
+<dialog id="panel"><h2>抽獎設定</h2><p>已預先套用 131 位符合資格的回覆出席者。若已知有人缺席，可先取消勾選。姓名可修正，也可加入臨時出席者。</p>
+<div class="controls"><input id="query" placeholder="搜尋姓名、科部或序號" aria-label="搜尋名單"><button class="minor" id="all">全選符合資格的原名單</button><button class="minor" id="none">清除勾選</button><button class="minor" id="add">加入臨時出席者</button></div>
 <div class="list" id="list"></div><p id="count"></p><p class="message" id="message" role="alert"></p>
 <div class="closing"><button class="minor" id="close">取消</button><button class="minor official" id="confirm">儲存抽獎設定</button></div></dialog>
 <script>
 const source=[[1, "田宇峯", "院長室"], [2, "朱逢源", "院長室"], [3, "高旭儒", "檢查室"], [4, "李緯", "心臟血管內科"], [5, "林哲光", "心臟血管內科"], [6, "黃柏穎", "神經內科"], [7, "郭育淇", "腎臟科-透析室"], [8, "王弘偉", "腎臟科-透析室"], [9, "陳奕嘉", "胃腸肝膽科"], [10, "陳郁麗", "內分泌新陳代謝科"], [11, "張明閎", "胸腔內科"], [12, "洪順興", "外科部"], [13, "林思維", "神經外科"], [14, "陳經國", "泌尿外科"], [15, "洪綸吾", "心臟血管外科"], [16, "蕭景星", "眼科"], [17, "杜明道", "家庭醫學科"], [18, "柯俊宏", "家庭醫學科"], [19, "許瀞文", ""], [20, "陳義憲", "急救醫學科"], [21, "劉憶萍", "護理部"], [22, "莊蕙瑛", "護理部"], [23, "林俊璋", "護理部"], [24, "林莉蓉", "護理部"], [25, "蕭蕙莉", "血液透析護理"], [26, "洪佩甄", "血液透析護理"], [27, "陳映潔", "血液透析護理"], [28, "黃薇瑾", "血液透析護理"], [29, "劉欣怡", "血液透析護理"], [30, "蔡麗華", "血液透析護理"], [31, "謝宜攸", "血液透析護理"], [32, "謝惠靜", "血液透析護理"], [33, "陳麗君", "血液透析護理"], [34, "黃齡瑤", "血液透析護理"], [35, "何佳宜", "3A病房"], [36, "吳佩蓉", "3A病房"], [37, "林宜靜", "5A 病房"], [38, "王詩媛", "6A 病房"], [39, "許家綺", "6A 病房"], [40, "莊月慈", "7A 病房"], [41, "蔡語涵", "7A 病房"], [42, "曾冠慈", "7A 病房"], [43, "黃百春", "7B 病房"], [44, "吳宜家", "7B 病房"], [45, "許馨文", "7B 病房"], [46, "蘇春枝", "急診室"], [47, "楊曉鏵", "急診室"], [48, "曾麗娥", "急診室"], [49, "劉怡姍", "急診室"], [50, "陳燕鈴", "門診"], [51, "張蕙茹", "門診"], [52, "黃淑芬", "門診"], [53, "陳姿妙", "門診"], [54, "王姿雅", "門診"], [55, "蕭琇丰", "門診"], [56, "賴雅君", "門診"], [57, "朱芳儀", "門診"], [58, "陳慈惠", "門診"], [59, "鄭雅馨", "二樓加護病房"], [60, "吳佩宜", "二樓加護病房"], [61, "徐曉玲", "二樓加護病房"], [62, "陳蕎誼", "二樓加護病房"], [63, "洪瑗君", "二樓加護病房"], [64, "方惠姍", "二樓加護病房"], [65, "黃玉婷", "二樓加護病房"], [66, "曾加儒", "二樓加護病房"], [67, "金珮華", "二樓加護病房"], [68, "張家蕙", "呼吸照護病房"], [69, "高婉菁", "護理部內科"], [70, "方月貞", "護理部內科"], [71, "楊惠絜", "護理部內科"], [72, "李秋慧", "護理部內科"], [73, "沈咸恩", "護理部內科"], [74, "鮑惠琦", "護理部外科"], [75, "吳貞慧", "護理部外科"], [76, "吳孟桂", "護理部外科"], [77, "陳姿尹", "護理部外科"], [78, "鄭鈺芬", "護理部外科"], [79, "沈宛君", "護理部外科"], [80, "王孝恬", "護理部加護"], [81, "林玉萱", "護理部加護"], [82, "林慧蓉", "麻醉部"], [83, "王鳳廷", "麻醉部"], [84, "洪嘉", "麻醉部"], [85, "黃彥婷", "麻醉部"], [86, "官淨怡", "麻醉部"], [87, "許翊鈴", "麻醉部"], [88, "張紹頤", "麻醉部"], [89, "侯雅靜", "物理治療組"], [90, "李雨霜", "物理治療組"], [91, "張家榛", "物理治療組"], [92, "謝淑鈴", "物理治療組"], [93, "李孟寰", "物理治療組"], [94, "蔡宛妮", "物理治療組"], [95, "林筱涵", "物理治療組"], [96, "陳學毅", "職能治療組"], [97, "鄭雅文", "職能治療組"], [98, "廖英劦", "職能治療組"], [99, "林佳穎", "職能治療組"], [100, "徐婉綸", "職能治療組"], [101, "洪渝棻", "職能治療組"], [102, "徐富琳", "職能治療組"], [103, "吳秀蒂", "放射診斷科"], [104, "吳志鴻", "放射診斷科"], [105, "江瑞益", "放射診斷科"], [106, "張鼎晨", "放射診斷科"], [107, "黃景旻", "放射診斷科"], [108, "羅云玎", "放射診斷科"], [109, "陳姿伶", "檢驗科"], [110, "林雅華", "檢驗科"], [111, "李振福", "檢驗科"], [112, "陳秋萍", "檢驗科"], [113, "許可佳", "檢驗科"], [114, "方尚齊", "檢驗科"], [115, "尤佳怡", "檢驗科"], [116, "孫逸芸", "檢驗科"], [117, "崔曉芬", "藥劑科"], [118, "李淑鈴", "藥劑科"], [119, "洪銘豐", "藥劑科"], [120, "趙婌伶", "藥劑科"], [121, "黃曉鳳", "藥劑科"], [122, "李佩汶", "藥劑科"], [123, "祁國棟", "藥劑科"], [124, "黃慧娟", "藥劑科"], [125, "黃羿惠", "藥劑科"], [126, "王景毅", "藥劑科"], [127, "謝斐庭", "藥劑科"], [128, "郭曼如", "藥劑科"], [129, "劉家玉", "呼吸治療組"], [130, "黃小容", "感染管制組"], [131, "張朝鈞", "感染管制組"], [132, "黃莉婷", "居家護理所"], [133, "謝佩蓉", "居家護理所"], [134, "邵詩媛", "院長室"], [135, "蔡松諭", "總務室"], [136, "林欣蓁", "教學研究組"], [137, "黃伊莉", "教學研究組"], [138, "鄭喬銨", "教學研究組"], [139, "謝佾樺", "教學研究組"], [140, "黃千容", "教學研究組"], [141, "賴俊良", "醫師公會"], [142, "陳相國", "醫師公會"], [143, "林士敦", "醫師公會"], [144, "吳國榮", "醫師公會"], [145, "李明陽", "醫師公會"], [146, "劉維穆", "醫師公會"], [147, "陳雨利", "醫師公會"], [148, "陳坤合", "醫師公會"], [149, "郭重德", "醫師公會"], [150, "鄭熙騰", "醫師公會"], [151, "謝樂偉", "醫師公會"], [152, "楊忠錫", "醫師公會"], [153, "林易煌", "醫師公會"]].map(([id,name,dept])=>({id,name,dept,here:true}));
 const key='chiali-banquet-draw-115-v1';
 const $=id=>document.getElementById(id);
-let state={roster:source,verified:true,winner:null,history:[],claimed:false};
+const excludedDepartments=new Set(['院長室','總務室','醫師公會','工作人員']);
+const excludedStaffIds=new Set([136,137,138,139,140]);
+const excludedNames=new Set(source.filter(person=>excludedDepartments.has(person.dept)||excludedStaffIds.has(person.id)).map(person=>person.name));
+const eligible=person=>!excludedDepartments.has(person.dept)&&!excludedStaffIds.has(person.id)&&!excludedNames.has(person.name);
+const eligibleRoster=source.filter(eligible);
+let state={roster:eligibleRoster,verified:true,winner:null,history:[],claimed:false};
 let storageOK=true;
 try {
   const saved=localStorage.getItem(key);
   if(saved){
     const previous=JSON.parse(saved);
-    if(previous.verified||previous.winner) state={...state,...previous,verified:true};
+    if(previous.verified||previous.winner) state={...state,...previous,roster:previous.roster.filter(eligible),verified:true};
   }
 } catch {storageOK=false;}
 let draft, demo=false, practiceWinner=null, practiceHistory=[], busy=false;
-const active=()=>state.roster.filter(person=>person.here);
+const active=()=>state.roster.filter(person=>person.here&&eligible(person));
 const specialRoles={"1": ["院長室", "院長"], "2": ["院長室", "醫務秘書"], "134": ["院長室", "副院長"], "141": ["醫師公會", "理事長"], "142": ["醫師公會", "全聯會理事長"], "143": ["醫師公會", "台南市診所協會理事長\n醫師公會常務理事"], "144": ["醫師公會", "常務監事"], "145": ["醫師公會", "常務理事"], "146": ["醫師公會", "常務理事"], "147": ["醫師公會", "監事"], "148": ["醫師公會", "理事"], "149": ["醫師公會", "理事"], "150": ["醫師公會", "監事"], "151": ["醫師公會", "理事"], "152": ["醫師公會", "理事"], "153": ["醫師公會", "顧問"]};
 const examples=[{id:1,name:'示範來賓 A',dept:'院長室',role:'醫務秘書'},{id:2,name:'示範來賓 B',dept:'醫師公會',role:'理事長'},{id:3,name:'示範來賓 C'}];
 const currentWinner=()=>demo?practiceWinner:state.winner;
@@ -243,13 +248,13 @@ $('setup').onclick=()=>{
 };
 $('query').oninput=list;
 $('all').onclick=()=>{
-  if(window.confirm('請確認原名單 153 位皆已到場。要全部勾選嗎？')){
+  if(window.confirm('請確認原名單中的抽獎候選人皆已到場。要全部勾選嗎？')){
     draft.forEach(person=>{if(person.id<=153)person.here=true;});list();
   }
 };
 $('none').onclick=()=>{draft.forEach(person=>person.here=false);list();};
 $('add').onclick=()=>{
-  draft.push({id:Math.max(...draft.map(person=>person.id))+1,name:'',dept:'臨時出席',here:true});
+  draft.push({id:Math.max(153,...draft.map(person=>person.id))+1,name:'',dept:'臨時出席',here:true});
   $('query').value='';
   list();
   $('list').lastElementChild.querySelector('input[type=text]').focus();
@@ -258,6 +263,7 @@ $('close').onclick=()=>$('panel').close();
 $('confirm').onclick=()=>{
   const selected=draft.filter(person=>person.here);
   if(!selected.length){$('message').textContent='請至少勾選 1 位實際出席者。';return;}
+  if(selected.some(person=>!eligible(person))){$('message').textContent='請取消勾選已排除的單位或工作人員。';return;}
   if(selected.some(person=>!person.name)){ $('message').textContent='請補上已勾選者的姓名。';return; }
   if(selected.some(person=>hasMissing(person.name))&&!window.confirm('已勾選名單含特殊字元。若字型無法顯示，請依名單序號核對得主。是否繼續？'))return;
   save({...state,roster:draft.filter(person=>person.name),verified:true});
