@@ -40,7 +40,7 @@ footer .award-tools{margin:0 auto 12px}
 <div class="winner" id="result" aria-live="polite"><div class="tag" id="winnerLabel"></div><strong id="winnerName"></strong><span id="winnerDetail"></span><span id="winnerRole" hidden></span><p class="award-call" id="awardCall">掌聲歡迎，快上台領獎囉！</p></div></div></section>
 </main>
 <footer><div class="award-tools" id="awardTools" hidden><button class="minor" id="redraw">重新抽獎</button></div><div class="toolbar"><button class="minor" id="setup">工作人員設定</button><button class="minor" id="demo">彩排試抽</button><button class="minor" id="previewOffice" hidden>預覽院長室</button><button class="minor" id="previewAssociation" hidden>預覽陳相國理事長</button><button class="minor" id="previewLin" hidden>預覽林士敦理事長</button><button class="minor" id="reset" hidden>清除試抽結果</button><button class="minor" id="full">全螢幕</button></div>115 年佳里奇美醫院 · 主治醫師暨臨床教師聯誼餐敘</footer>
-<dialog id="panel"><h2>抽獎設定</h2><p>已預先套用 131 位符合資格的回覆出席者。若已知有人缺席，可先取消勾選。姓名可修正，也可加入臨時出席者。</p>
+<dialog id="panel"><h2>抽獎設定</h2><p>已預先套用 129 位符合資格的回覆出席者。若已知有人缺席，可先取消勾選。姓名可修正，也可加入臨時出席者。</p>
 <div class="controls"><input id="query" placeholder="搜尋姓名、科部或序號" aria-label="搜尋名單"><button class="minor" id="all">全選符合資格的原名單</button><button class="minor" id="none">清除勾選</button><button class="minor" id="add">加入臨時出席者</button></div>
 <div class="list" id="list"></div><p id="count"></p><p class="message" id="message" role="alert"></p>
 <div class="closing"><button class="minor" id="close">取消</button><button class="minor official" id="confirm">儲存抽獎設定</button></div></dialog>
@@ -51,7 +51,8 @@ const $=id=>document.getElementById(id);
 const excludedDepartments=new Set(['院長室','總務室','醫師公會','工作人員']);
 const excludedStaffIds=new Set([136,137,138,139,140]);
 const excludedNames=new Set(source.filter(person=>excludedDepartments.has(person.dept)||excludedStaffIds.has(person.id)).map(person=>person.name));
-const eligible=person=>!excludedDepartments.has(person.dept)&&!excludedStaffIds.has(person.id)&&!excludedNames.has(person.name);
+const excludedGlyphIds=new Set([4,84]);
+const eligible=person=>!excludedGlyphIds.has(person.id)&&!excludedDepartments.has(person.dept)&&!excludedStaffIds.has(person.id)&&!excludedNames.has(person.name);
 const eligibleRoster=source.filter(eligible);
 let state={roster:eligibleRoster,verified:true,winner:null,history:[],claimed:false};
 let storageOK=true;
